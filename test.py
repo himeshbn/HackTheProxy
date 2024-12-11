@@ -8,13 +8,14 @@ import json
 from tkinter import *
 from tkinter import messagebox
 from datetime import datetime
+from PIL import Image, ImageTk
 from playsound import playsound  # Library to play sounds
 
 # File and Directory Constants
 CREDENTIALS_FILE = "class_credentials.json"
 STUDENT_IMAGES_PATH = "student_images"
 ATTENDANCE_DIR = "attendance_records"
-SOUND_FILE = "recognition_sound.mp3"  # Path to the sound file to play
+SOUND_FILE = "D:\\Facial Recognition based Attendance System\\recognition_sound.mp3"  # Path to the sound file to play
 LANDMARKS_MODEL = "shape_predictor_68_face_landmarks.dat"  # Path to dlib landmarks model
 
 # Ensure directories exist
@@ -267,14 +268,73 @@ root = Tk()
 root.title("Facial Recognition Based Attendance System")
 root.geometry("600x500")
 
-# Headers
-Label(root, text="BANGALORE INSTITUTE OF TECHNOLOGY", font=("Arial", 16, "bold")).pack(pady=10)
-Label(root, text="Department of Computer Science and Engineering", font=("Arial", 12, "bold")).pack(pady=10)
-Label(root, text="(IoT and Cybersecurity including Blockchain Technology)", font=("Arial", 12, "bold")).pack(pady=5)
-Label(root, text="Developed by AHVM", font=("Arial", 8)).pack(side=BOTTOM, pady=10)
+# Load the Background Image
+background_image_path = "background.jpg"  # Replace with your image file path
+bg_image = Image.open(background_image_path)
+bg_image = bg_image.resize((600, 500))  # Updated resampling method
+bg_photo = ImageTk.PhotoImage(bg_image)
 
-# Buttons
-Button(root, text="Register Class", command=register_class).pack(pady=10)
-Button(root, text="Faculty Login", command=login_faculty).pack(pady=10)
+# Create a Label for the Background
+bg_label = Label(root, image=bg_photo)
+bg_label.place(relwidth=1, relheight=1)   # Make the label cover the entire window
 
+header_fg_color = "#00FFFF"  # Cyan, matching the glowing blue effect
+header_bg_color = "#1A1A1A"  # Semi-dark, matching the image's glow effect
+
+Label(
+    root,
+    text="BANGALORE INSTITUTE OF TECHNOLOGY",
+    font=("Arial", 16, "bold"),
+    bg=header_bg_color,
+    fg=header_fg_color
+).pack(pady=10)
+
+Label(
+    root,
+    text="Department of Computer Science and Engineering",
+    font=("Arial", 12, "bold"),
+    bg=header_bg_color,
+    fg=header_fg_color
+).pack(pady=10)
+
+Label(
+    root,
+    text="(IoT and Cybersecurity including Blockchain Technology)",
+    font=("Arial", 12, "bold"),
+    bg=header_bg_color,
+    fg=header_fg_color
+).pack(pady=5)
+
+Label(
+    root,
+    text="Developed by AHVM",
+    font=("Arial", 8),
+    bg=header_bg_color,
+    fg=header_fg_color
+).pack(side=BOTTOM, pady=10)
+
+# Buttons with Matching Style
+button_bg_color = "#333333"  # Dark gray
+button_fg_color = "#00FF00"  # Bright green, glowing effect
+
+Button(
+    root,
+    text="Register Class",
+    command=register_class,
+    bg=button_bg_color,
+    fg=button_fg_color,
+    font=("Arial", 10, "bold")
+).pack(pady=10)
+
+Button(
+    root,
+    text="Faculty Login",
+    command=login_faculty,
+    bg=button_bg_color,
+    fg=button_fg_color,
+    font=("Arial", 10, "bold")
+).pack(pady=10)
+
+# Main Loop
 root.mainloop()
+
