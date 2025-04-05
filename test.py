@@ -1,26 +1,31 @@
-# with liveliness added and working properly as per the requirements. 
+# with liveliness added and working properly as per the requirements, now with password encryption
 import cv2
 import os
 import face_recognition
 import dlib
 import pandas as pd
 import json
+import hashlib
 from tkinter import *
 from tkinter import messagebox
 from datetime import datetime
 from PIL import Image, ImageTk
-from playsound import playsound  # Library to play sounds
+from playsound import playsound
 
 # File and Directory Constants
 CREDENTIALS_FILE = "class_credentials.json"
 STUDENT_IMAGES_PATH = "student_images"
 ATTENDANCE_DIR = "attendance_records"
-SOUND_FILE = "D:\\Facial Recognition based Attendance System\\recognition_sound.mp3"  # Path to the sound file to play
-LANDMARKS_MODEL = "shape_predictor_68_face_landmarks.dat"  # Path to dlib landmarks model
+SOUND_FILE = "D:\\Facial Recognition based Attendance System\\recognition_sound.mp3"
+LANDMARKS_MODEL = "shape_predictor_68_face_landmarks.dat"
 
 # Ensure directories exist
 os.makedirs(STUDENT_IMAGES_PATH, exist_ok=True)
 os.makedirs(ATTENDANCE_DIR, exist_ok=True)
+
+# Encryption Helper
+def encrypt_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
 # Load and Save Functions for Class Credentials
 def load_credentials():
@@ -33,7 +38,6 @@ def save_credentials():
     with open(CREDENTIALS_FILE, "w") as file:
         json.dump(CLASS_CREDENTIALS, file)
 
-# Global Variables
 CLASS_CREDENTIALS = load_credentials()
 
 def register_class():
@@ -44,7 +48,7 @@ def register_class():
             if class_id in CLASS_CREDENTIALS:
                 messagebox.showerror("Error", "Class ID already exists!")
             else:
-                CLASS_CREDENTIALS[class_id] = class_password
+                CLASS_CREDENTIALS[class_id] = encrypt_password(class_password)
                 save_credentials()
                 os.makedirs(os.path.join(STUDENT_IMAGES_PATH, class_id), exist_ok=True)
                 messagebox.showinfo("Success", "Class Registered!")
@@ -58,18 +62,16 @@ def register_class():
     Label(registration_window, text="Class ID:").grid(row=0, column=0, padx=10, pady=5)
     class_id_entry = Entry(registration_window)
     class_id_entry.grid(row=0, column=1, padx=10, pady=5)
-
     Label(registration_window, text="Password:").grid(row=1, column=0, padx=10, pady=5)
     class_password_entry = Entry(registration_window, show="*")
     class_password_entry.grid(row=1, column=1, padx=10, pady=5)
-
     Button(registration_window, text="Submit", command=submit).grid(row=2, column=0, columnspan=2, pady=10)
 
 def login_faculty():
     def authenticate(selected_class):
         def login():
             entered_password = password_entry.get()
-            if CLASS_CREDENTIALS.get(selected_class) == entered_password:
+            if CLASS_CREDENTIALS.get(selected_class) == encrypt_password(entered_password):
                 messagebox.showinfo("Success", "Login Successful!")
                 login_window.destroy()
                 main_menu(selected_class)
@@ -129,17 +131,14 @@ def register_student(class_id):
     Label(student_window, text="Student Name:").grid(row=0, column=0, padx=10, pady=5)
     name_entry = Entry(student_window)
     name_entry.grid(row=0, column=1, padx=10, pady=5)
-
     Label(student_window, text="Student ID:").grid(row=1, column=0, padx=10, pady=5)
     id_entry = Entry(student_window)
     id_entry.grid(row=1, column=1, padx=10, pady=5)
-
     Button(student_window, text="Capture Images", command=capture_images).grid(row=2, column=0, columnspan=2, pady=10)
 
 def take_attendance(class_id):
     known_encodings = []
     known_ids = []
-
     class_path = os.path.join(STUDENT_IMAGES_PATH, class_id)
     for student_id in os.listdir(class_path):
         student_path = os.path.join(class_path, student_id)
@@ -154,7 +153,6 @@ def take_attendance(class_id):
     cap = cv2.VideoCapture(0)
     present_students = set()
     attendance_data = []
-
     detector = dlib.get_frontal_face_detector()
     predictor = dlib.shape_predictor(LANDMARKS_MODEL)
 
@@ -168,20 +166,17 @@ def take_attendance(class_id):
         horizontal_length = cv2.norm(left_point, right_point)
         vertical_length = cv2.norm(center_top, center_bottom)
         ratio = vertical_length / horizontal_length
-        return ratio > 0.25  # Adjust threshold if necessary
+        return ratio > 0.25
 
     while True:
         ret, frame = cap.read()
         if not ret:
             break
 
-        # Resize frame for faster processing
         small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
         rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
-
         faces = face_recognition.face_locations(rgb_frame)
         encodings = face_recognition.face_encodings(rgb_frame, faces)
-
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces_dlib = detector(gray_frame)
 
@@ -192,20 +187,16 @@ def take_attendance(class_id):
                 student_id = known_ids[match_index]
 
                 if student_id not in present_students:
-                    # Check for liveness using blink detection
                     landmarks = predictor(gray_frame, face_dlib)
-                    left_eye_blinking = is_blinking([36, 37, 38, 39, 40, 41], landmarks)
-                    right_eye_blinking = is_blinking([42, 43, 44, 45, 46, 47], landmarks)
-
-                    if left_eye_blinking or right_eye_blinking:
+                    if is_blinking([36, 37, 38, 39, 40, 41], landmarks) or is_blinking([42, 43, 44, 45, 46, 47], landmarks):
                         present_students.add(student_id)
                         top, right, bottom, left = [v * 4 for v in face_location]
                         cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
                         cv2.putText(frame, student_id, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-                        playsound(SOUND_FILE)  # Play sound on recognition
+                        playsound(SOUND_FILE)
 
         cv2.imshow("Attendance", frame)
-        if cv2.waitKey(1) == 27:  # Press ESC to stop
+        if cv2.waitKey(1) == 27:
             break
 
     cap.release()
@@ -217,11 +208,7 @@ def take_attendance(class_id):
 
     for student_id in os.listdir(class_path):
         status = "Present" if student_id in present_students else "Absent"
-        attendance_data.append({
-            "Student ID": student_id,
-            "Status": status,
-            "Date & Time": timestamp
-        })
+        attendance_data.append({"Student ID": student_id, "Status": status, "Date & Time": timestamp})
 
     attendance_file = os.path.join(ATTENDANCE_DIR, f"{class_id}_attendance_{file_date}.csv")
     df = pd.DataFrame(attendance_data)
@@ -237,7 +224,6 @@ def view_attendance(class_id):
             messagebox.showerror("Error", "File not found!")
 
     attendance_files = [f for f in os.listdir(ATTENDANCE_DIR) if f.startswith(class_id) and f.endswith(".csv")]
-
     if not attendance_files:
         messagebox.showerror("Error", f"No attendance records found for class {class_id}.")
         return
@@ -245,7 +231,6 @@ def view_attendance(class_id):
     file_window = Toplevel()
     file_window.title(f"Attendance Records - {class_id}")
     file_window.geometry("400x300")
-
     Label(file_window, text=f"Attendance Files for Class {class_id}:", font=("Arial", 12, "bold")).pack(pady=10)
     for file_name in attendance_files:
         Button(file_window, text=file_name, command=lambda fn=file_name: display_file(fn)).pack(pady=5)
@@ -268,73 +253,24 @@ root = Tk()
 root.title("Facial Recognition Based Attendance System")
 root.geometry("600x500")
 
-# Load the Background Image
-background_image_path = "background.jpg"  # Replace with your image file path
+background_image_path = "background.jpg"
 bg_image = Image.open(background_image_path)
-bg_image = bg_image.resize((600, 500))  # Updated resampling method
+bg_image = bg_image.resize((600, 500))
 bg_photo = ImageTk.PhotoImage(bg_image)
-
-# Create a Label for the Background
 bg_label = Label(root, image=bg_photo)
-bg_label.place(relwidth=1, relheight=1)   # Make the label cover the entire window
+bg_label.place(relwidth=1, relheight=1)
 
-header_fg_color = "#00FFFF"  # Cyan, matching the glowing blue effect
-header_bg_color = "#1A1A1A"  # Semi-dark, matching the image's glow effect
+header_fg_color = "#00FFFF"
+header_bg_color = "#1A1A1A"
 
-Label(
-    root,
-    text="BANGALORE INSTITUTE OF TECHNOLOGY",
-    font=("Arial", 16, "bold"),
-    bg=header_bg_color,
-    fg=header_fg_color
-).pack(pady=10)
+Label(root, text="BANGALORE INSTITUTE OF TECHNOLOGY", font=("Arial", 16, "bold"), bg=header_bg_color, fg=header_fg_color).pack(pady=10)
+Label(root, text="Department of Computer Science and Engineering", font=("Arial", 12, "bold"), bg=header_bg_color, fg=header_fg_color).pack(pady=10)
+Label(root, text="(IoT and Cybersecurity including Blockchain Technology)", font=("Arial", 12, "bold"), bg=header_bg_color, fg=header_fg_color).pack(pady=5)
+Label(root, text="Developed by AHVM", font=("Arial", 8), bg=header_bg_color, fg=header_fg_color).pack(side=BOTTOM, pady=10)
 
-Label(
-    root,
-    text="Department of Computer Science and Engineering",
-    font=("Arial", 12, "bold"),
-    bg=header_bg_color,
-    fg=header_fg_color
-).pack(pady=10)
+button_bg_color = "#333333"
+button_fg_color = "#00FF00"
+Button(root, text="Register Class", command=register_class, bg=button_bg_color, fg=button_fg_color, font=("Arial", 10, "bold")).pack(pady=10)
+Button(root, text="Faculty Login", command=login_faculty, bg=button_bg_color, fg=button_fg_color, font=("Arial", 10, "bold")).pack(pady=10)
 
-Label(
-    root,
-    text="(IoT and Cybersecurity including Blockchain Technology)",
-    font=("Arial", 12, "bold"),
-    bg=header_bg_color,
-    fg=header_fg_color
-).pack(pady=5)
-
-Label(
-    root,
-    text="Developed by AHVM",
-    font=("Arial", 8),
-    bg=header_bg_color,
-    fg=header_fg_color
-).pack(side=BOTTOM, pady=10)
-
-# Buttons with Matching Style
-button_bg_color = "#333333"  # Dark gray
-button_fg_color = "#00FF00"  # Bright green, glowing effect
-
-Button(
-    root,
-    text="Register Class",
-    command=register_class,
-    bg=button_bg_color,
-    fg=button_fg_color,
-    font=("Arial", 10, "bold")
-).pack(pady=10)
-
-Button(
-    root,
-    text="Faculty Login",
-    command=login_faculty,
-    bg=button_bg_color,
-    fg=button_fg_color,
-    font=("Arial", 10, "bold")
-).pack(pady=10)
-
-# Main Loop
 root.mainloop()
-
